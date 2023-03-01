@@ -63,7 +63,7 @@ const productSchema = mongoose.Schema({
     },
 });
 productSchema.virtual('id').get(function () {
-    return this._id.toHexString();
+    return this._id.toHexString(); //because object id is hex
 });
 
 productSchema.set('toJSON', {
