@@ -19,6 +19,8 @@ const productRouter = require('./routers/product.js');
 
 const catgeoryRouter = require('./routers/categories.js');
 
+const orderRouter = require('./routers/orders');
+
 const userRouter = require('./routers/users.js');
 
 //Middleware
@@ -31,6 +33,7 @@ app.use(errorHandler);
 app.use(`${api}/products`, productRouter);
 app.use(`${api}/categories`, catgeoryRouter);
 app.use(`${api}/users`, userRouter);
+app.use(`${api}/orders`, orderRouter);
 
 const port = 3000;
 mongoose.set('strictQuery', true);
