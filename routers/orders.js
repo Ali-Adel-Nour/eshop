@@ -5,6 +5,33 @@ const express = require('express');
 
 const router = express.Router();
 
+router.get('/', async (req, res) => {
+    // sort from newest to oldest
+    const orderList = await Order.find()
+        .populate('user')
+        .sort({ dateOrdered: -1 });
+    if (!orderList) {
+        res.status(500).json({ success: false });
+    }
+    res.send(orderList);
+});
+
+router.get('/:id', async (req, res) => {
+    // sort from newest to oldest
+    const order = await Order.findById(req.params.id)
+        .populate('user', 'name')
+        //get all information about order items
+        .populate({
+            path: 'orderItems',
+            populate: { path: 'product', populate: 'category' },
+        });
+
+    if (!order) {
+        res.status(500).json({ success: false });
+    }
+    res.send(order);
+});
+
 router.post('/', async (req, res) => {
     const orderItemsIds = Promise.all(
         req.body.orderItems.map(async (orderItem) => {
@@ -50,6 +77,80 @@ router.post('/', async (req, res) => {
     if (!order) return res.status(400).send('the order cannot be created!');
 
     res.send(order);
+});
+
+router.put('/:id', async (req, res) => {
+    const order = await Order.findByIdAndUpdate(
+        req.params.id,
+        {
+            status: req.body.status,
+        },
+        { new: true } // for returning data after update
+    );
+    if (!order) return res.status(400).send('the category cannot be created');
+
+    res.send(order);
+});
+
+router.delete('/:id', (req, res) => {
+    Order.findByIdAndRemove(req.params.id)
+        .then(async (order) => {
+            if (order) {
+                await order.orderItems.map(async (orderItem) => {
+                    await OrderItem.findByIdAndRemove(orderItem);
+                });
+                return res
+                    .status(200)
+                    .json({ success: true, message: 'the order is deleted!' });
+            } else {
+                return res
+                    .status(404)
+                    .json({ success: false, message: 'order not found!' });
+            }
+        })
+        .catch((err) => {
+            return res.status(500).json({ success: false, error: err });
+        });
+});
+
+router.get('/get/totalsales', async (req, res) => {
+    // like join in sql
+    const totalSales = await Order.aggregate([
+        { $group: { _id: null, totalsales: { $sum: '$totalPrice' } } },
+    ]);
+    if (!totalSales) {
+        return res.status(400).send('The order sales connot be generated');
+    }
+    res.send({ totalsales: totalSales.pop().totalsales });
+});
+
+router.get(`/get/count`, async (req, res) => {
+    try {
+        const orderCount = await Order.countDocuments();
+        res.send({
+            success: true,
+            orderCount: orderCount,
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+router.get(`/get/userorders/:userid`, async (req, res) => {
+    const userOrderList = await Order.find({ user: req.params.userid })
+        .populate({
+            path: 'orderItems',
+            populate: {
+                path: 'product',
+                populate: 'category',
+            },
+        })
+        .sort({ dateOrdered: -1 });
+
+    if (!userOrderList) {
+        res.status(500).json({ success: false });
+    }
+    res.send(userOrderList);
 });
 
 module.exports = router;
